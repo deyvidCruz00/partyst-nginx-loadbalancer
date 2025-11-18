@@ -1,0 +1,39 @@
+services:
+  # Nginx Load Balancer
+  - type: web
+    name: partyst-loadbalancer
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    branch: main
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NGINX_WORKER_PROCESSES
+        value: auto
+      - key: NGINX_WORKER_CONNECTIONS
+        value: "1024"
+    
+    # Configuración de health check
+    healthCheckPath: /health
+    healthCheckInterval: 30
+    
+    # Configuración de reintentos
+    autoDeploy: true
+    
+    # Límites de recursos
+    maxInstanceCount: 1
+    minInstanceCount: 1
+    numInstances: 1
+
+# Información sobre los nodos del backend que serán balanceados
+# Estos deben estar desplegados separadamente:
+#
+# Nodo 1: partyst-backend-1.onrender.com
+# Nodo 2: partyst-backend-2.onrender.com
+# Nodo 3: partyst-backend-3.onrender.com
+#
+# El load balancer distribuirá el tráfico entre estos 3 nodos
+# usando el algoritmo "least_conn" (menos conexiones activas)

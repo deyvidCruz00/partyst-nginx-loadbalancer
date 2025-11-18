@@ -1,0 +1,64 @@
+# Nginx Load Balancer .gitignore
+
+# Backups
+*.bak
+*.backup
+*.old
+*~
+
+# Logs
+logs/
+*.log
+access.log
+error.log
+
+# Archivos temporales
+temp/
+tmp/
+.tmp/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Archivos de configuración sensibles
+.env
+.env.local
+.env.*.local
+secrets.yaml
+
+# Certificados (si los guardas localmente)
+*.crt
+*.key
+*.pem
+
+# Node modules (si usas cualquier herramienta)
+node_modules/
+package-lock.json
+npm-debug.log
+
+# Python (si usas scripts de configuración)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Métricas y caché
+.cache/
+*.metrics
+prometheus_data/
+
+# Archivos generados
+.generated/
+dist/
+build/

@@ -1,0 +1,302 @@
+# Ejemplos de configuración para diferentes escenarios
+# Copia la sección que necesites a nginx.conf
+
+# ============================================
+# EJEMPLO 1: Load Balancer Simple (3 nodos)
+# ============================================
+
+upstream partyst_backend {
+    least_conn;
+    
+    server backend-1.onrender.com:443 max_fails=3 fail_timeout=30s;
+    server backend-2.onrender.com:443 max_fails=3 fail_timeout=30s;
+    server backend-3.onrender.com:443 max_fails=3 fail_timeout=30s;
+    
+    keepalive 32;
+}
+
+# ============================================
+# EJEMPLO 2: Load Balancer con pesos
+# (Si un servidor es más potente que otros)
+# ============================================
+
+upstream partyst_backend {
+    least_conn;
+    
+    server backend-1.onrender.com:443 weight=3 max_fails=3 fail_timeout=30s;
+    server backend-2.onrender.com:443 weight=2 max_fails=3 fail_timeout=30s;
+    server backend-3.onrender.com:443 weight=1 max_fails=3 fail_timeout=30s;
+    
+    keepalive 32;
+}
+
+# ============================================
+# EJEMPLO 3: Load Balancer con Servidor de Backup
+# ============================================
+
+upstream partyst_backend {
+    least_conn;
+    
+    server backend-1.onrender.com:443 max_fails=3 fail_timeout=30s;
+    server backend-2.onrender.com:443 max_fails=3 fail_timeout=30s;
+    server backend-3.onrender.com:443 max_fails=3 fail_timeout=30s;
+    
+    # Este solo recibirá tráfico si los otros fallan
+    server backup-server.onrender.com:443 backup max_fails=2 fail_timeout=30s;
+    
+    keepalive 32;
+}
+
+# ============================================
+# EJEMPLO 4: Sticky Sessions (IP Hash)
+# Para mantener el usuario en el mismo servidor
+# ============================================
+
+upstream partyst_backend {
+    ip_hash;  # Basado en IP del cliente
+    
+    server backend-1.onrender.com:443;
+    server backend-2.onrender.com:443;
+    server backend-3.onrender.com:443;
+    
+    keepalive 32;
+}
+
+# ============================================
+# EJEMPLO 5: Hash consistente (para cache distribuido)
+# ============================================
+
+upstream partyst_backend {
+    hash $request_uri consistent;
+    
+    server backend-1.onrender.com:443;
+    server backend-2.onrender.com:443;
+    server backend-3.onrender.com:443;
+    
+    keepalive 32;
+}
+
+# ============================================
+# EJEMPLO 6: Configuración con Health Checks Avanzados
+# ============================================
+
+upstream partyst_backend {
+    zone backend 64k;
+    least_conn;
+    
+    server backend-1.onrender.com:443 max_fails=5 fail_timeout=10s weight=1;
+    server backend-2.onrender.com:443 max_fails=5 fail_timeout=10s weight=1;
+    server backend-3.onrender.com:443 max_fails=5 fail_timeout=10s weight=1;
+    
+    keepalive 32;
+    keepalive_timeout 60s;
+    keepalive_requests 100;
+}
+
+# Health check pasivo (default)
+# Active health checks requieren Nginx Plus (versión de pago)
+
+# ============================================
+# EJEMPLO 7: Rate Limiting Avanzado
+# ============================================
+
+# Por IP
+limit_req_zone $binary_remote_addr zone=by_ip:10m rate=10r/s;
+
+# Por usuario (requiere autenticación)
+limit_req_zone $remote_user zone=by_user:10m rate=20r/s;
+
+# Por ruta específica
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=5r/s;
+
+# En la ubicación:
+location /api/ {
+    limit_req zone=by_ip burst=20 nodelay;
+    limit_req zone=api_limit burst=10 nodelay;
+    
+    proxy_pass http://partyst_backend;
+    # ... resto de la configuración
+}
+
+# ============================================
+# EJEMPLO 8: Geolocalización (requiere MaxMind GeoIP2)
+# ============================================
+
+# Instalar: apt-get install libnginx-mod-geoip2
+
+map $geoip2_data_country_code $backend_pool {
+    default         backend_americas;
+    ES              backend_europe;
+    FR              backend_europe;
+    DE              backend_europe;
+    BR              backend_americas;
+    MX              backend_americas;
+    CO              backend_americas;
+}
+
+upstream backend_americas {
+    server backend-1.onrender.com:443;
+    server backend-2.onrender.com:443;
+}
+
+upstream backend_europe {
+    server backend-3.onrender.com:443;
+}
+
+# Uso:
+location /api/ {
+    proxy_pass http://$backend_pool;
+}
+
+# ============================================
+# EJEMPLO 9: Compresión Gzip Avanzada
+# ============================================
+
+gzip on;
+gzip_vary on;
+gzip_proxied any;
+gzip_comp_level 6;
+gzip_types 
+    text/plain 
+    text/css 
+    text/xml 
+    text/javascript 
+    application/json 
+    application/javascript 
+    application/xml+rss 
+    application/rss+xml 
+    application/atom+xml;
+gzip_min_length 1000;
+gzip_disable "msie6";
+
+# ============================================
+# EJEMPLO 10: Caché HTTP
+# ============================================
+
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=my_cache:10m max_size=1g inactive=60m use_temp_path=off;
+
+server {
+    location /api/public/ {
+        proxy_cache my_cache;
+        proxy_cache_valid 200 1h;
+        proxy_cache_valid 404 10m;
+        proxy_cache_key "$scheme$request_method$host$request_uri";
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+        
+        add_header X-Cache-Status $upstream_cache_status;
+        
+        proxy_pass http://partyst_backend;
+    }
+}
+
+# ============================================
+# EJEMPLO 11: Session Persistence con Cookie
+# ============================================
+
+map $cookie_backend $backend_id {
+    default "";
+    ~*backend-1 "backend-1";
+    ~*backend-2 "backend-2";
+    ~*backend-3 "backend-3";
+}
+
+upstream partyst_backend {
+    least_conn;
+    
+    server backend-1.onrender.com:443 max_fails=3 fail_timeout=30s;
+    server backend-2.onrender.com:443 max_fails=3 fail_timeout=30s;
+    server backend-3.onrender.com:443 max_fails=3 fail_timeout=30s;
+}
+
+location /api/ {
+    if ($backend_id = "") {
+        add_header Set-Cookie "backend=$upstream_addr; Path=/; Max-Age=3600";
+    }
+    
+    proxy_pass http://partyst_backend;
+}
+
+# ============================================
+# EJEMPLO 12: Split Testing (A/B Testing)
+# ============================================
+
+upstream backend_v1 {
+    server backend-1.onrender.com:443;
+}
+
+upstream backend_v2 {
+    server backend-2.onrender.com:443;
+}
+
+upstream backend_stable {
+    server backend-3.onrender.com:443;
+}
+
+map $cookie_version $upstream_pool {
+    default         backend_stable;
+    "v1"            backend_v1;
+    "v2"            backend_v2;
+}
+
+location /api/ {
+    proxy_pass http://$upstream_pool;
+}
+
+# ============================================
+# EJEMPLO 13: Canary Deployment
+# ============================================
+
+upstream backend_stable {
+    least_conn;
+    server backend-1.onrender.com:443 weight=100;
+    server backend-2.onrender.com:443 weight=100;
+}
+
+upstream backend_canary {
+    least_conn;
+    server backend-3.onrender.com:443 weight=5;  # 5% del tráfico
+}
+
+map $random $backend {
+    ~*^[0-4]$ backend_canary;
+    default  backend_stable;
+}
+
+location /api/ {
+    proxy_pass http://$backend;
+}
+
+# ============================================
+# EJEMPLO 14: Logging Personalizado
+# ============================================
+
+log_format upstream_log '$remote_addr - $remote_user [$time_local] '
+                       '"$request" $status $body_bytes_sent '
+                       '"$http_referer" "$http_user_agent" '
+                       'upstream: $upstream_addr '
+                       'upstream_status: $upstream_status '
+                       'request_time: $request_time '
+                       'upstream_response_time: $upstream_response_time';
+
+server {
+    access_log /var/log/nginx/upstream.log upstream_log;
+    
+    location /api/ {
+        proxy_pass http://partyst_backend;
+    }
+}
+
+# ============================================
+# EJEMPLO 15: Monitoreo con Prometheus
+# ============================================
+
+location /metrics {
+    stub_status on;
+    access_log off;
+    allow 127.0.0.1;
+    allow ::1;
+    deny all;
+}
+
+# Usar prometheus-nginx-module para métricas avanzadas
+# https://github.com/nginxinc/prometheus-nginx-module

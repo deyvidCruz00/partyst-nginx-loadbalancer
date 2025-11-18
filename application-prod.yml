@@ -1,0 +1,104 @@
+# application-prod.yml - Configuración para producción en Render
+
+spring:
+  application:
+    name: partyst-backend
+  
+  # Datasource - Usar variable de entorno
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/partyst}
+    username: ${SPRING_DATASOURCE_USERNAME:user}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+    
+    # Pool de conexiones
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  # JPA/Hibernate
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQL10Dialect
+    hibernate:
+      ddl-auto: validate  # validate, update, create, create-drop
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 10
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+    show-sql: false
+    open-in-view: false
+  
+  # Jackson
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Server configuration
+server:
+  port: ${PORT:10000}
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    min-response-size: 1024
+  shutdown: graceful
+  shutdown-wait-time: 30s
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.partyst: DEBUG
+    org.springframework: INFO
+    org.springframework.security: DEBUG
+    org.hibernate: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+    max-size: 10MB
+    max-history: 10
+
+# Microservices URLs
+microservices:
+  email:
+    url: ${EMAIL_SERVICE_URL:https://email-service-hkvt.onrender.com}
+  notifications:
+    url: ${NOTIFICATIONS_SERVICE_URL:https://notifications-service-mkdx.onrender.com}
+
+# Security
+security:
+  jwt:
+    secret: ${JWT_SECRET:tu-super-secreto-cambiar-en-produccion}
+    expiration: 86400000  # 24 horas en millisegundos
+
+# Actuator - Health checks
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    enable:
+      process: true
+      jvm: true
+
+# Información de la aplicación
+app:
+  name: PartySTApp Backend
+  version: 1.0.0
+  description: Backend API para PartySTApp
+  environment: production
