@@ -4,29 +4,14 @@ services:
     name: partyst-loadbalancer
     env: docker
     dockerfilePath: ./Dockerfile
-    dockerContext: .
-    branch: main
-    plan: free
     region: oregon
+    plan: free
+    branch: main
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: PORT
-        value: 10000
-      - key: NGINX_WORKER_PROCESSES
-        value: auto
-      - key: NGINX_WORKER_CONNECTIONS
-        value: "1024"
-    
-    # Configuración de health check
-    healthCheckPath: /health
-    healthCheckInterval: 30
-    
-    # Configuración de reintentos
-    autoDeploy: true
-    
-    # Límites de recursos
-    maxInstanceCount: 1
-    minInstanceCount: 1
-    numInstances: 1
+        value: "10000"
 
 # Información sobre los nodos del backend que serán balanceados
 # Estos deben estar desplegados separadamente:
